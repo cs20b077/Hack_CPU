@@ -23,8 +23,8 @@ For the testing, output and comparison files for the Hack CPU and Computer, 3a r
 The files Q3a.asm, Q3b.asm, Q3c.asm, Q3a.hack, Q3b.hack and Q3c.hack refer to the implementations of the given programs  
 in the Hack machine language and as its binary representation respectively.
 
-->Load the respective hdl and tst files into the Hardware Simulator provided my nand2tetris tools.&nbsp;
-->Run and check the output files with cmp files
+->Load the respective hdl and tst files into the Hardware Simulator provided my nand2tetris tools.
+&nbsp;->Run and check the output files with cmp files
 
 
 Some of the important helper chips for the above chips are as follows:
