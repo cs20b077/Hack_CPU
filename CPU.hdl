@@ -1,0 +1,96 @@
+/**
+ * The Hack CPU (Central Processing unit), consisting of an ALU,
+ * two registers named A and D, and a program counter named PC.
+ * The CPU is designed to fetch and execute instructions written in 
+ * the Hack machine language. In particular, functions as follows:
+ * Executes the inputted instruction according to the Hack machine 
+ * language specification. The D and A in the language specification
+ * refer to CPU-resident registers, while M refers to the external
+ * memory location addressed by A, i.e. to Memory[A]. The inM input 
+ * holds the value of this location. If the current instruction needs 
+ * to write a value to M, the value is placed in outM, the address 
+ * of the target location is placed in the addressM output, and the 
+ * writeM control bit is asserted. (When writeM==0, any value may 
+ * appear in outM). The outM and writeM outputs are combinational: 
+ * they are affected instantaneously by the execution of the current 
+ * instruction. The addressM and pc outputs are clocked: although they 
+ * are affected by the execution of the current instruction, they commit 
+ * to their new values only in the next time step. If reset==1 then the 
+ * CPU jumps to address 0 (i.e. pc is set to 0 in next time step) rather 
+ * than to the address resulting from executing the current instruction. 
+ */
+
+CHIP CPU {
+
+    IN  inM[16],         // M value input  (M = contents of RAM[A])
+        instruction[16], // Instruction for execution
+        reset;           // Signals whether to re-start the current
+                         // program (reset==1) or continue executing
+                         // the current program (reset==0).
+
+    OUT outM[16],        // M value output
+        writeM,          // Write to M? 
+        addressM[15],    // Address in data memory (of M)
+        pc[15];          // address of next instruction
+
+    PARTS:
+
+    /* A instruction : instruction[15] = 0, instruction[0..14] = value to be stored in A */
+    
+    /*
+    C instruction :
+    instruction[13..15] : 111
+    instruction[12] : M or A in RHS (A if 0 else M)
+    instruction[11..6] : zx, nx, zy, ny, f, no
+    instruction[5..3] : A, D, M respectively in LHS
+    instruction[2..0] : Jump if ng, zr, !ng respectively
+    */
+    
+    // Input for A register if it should be written to
+    Not (in = instruction[15], out = notinstruction15);
+    Mux16 (a = ALUoutput, b = instruction, sel = notinstruction15, out = inA);
+
+
+    // Checking if the A register should be written to
+    And (a = instruction[5], b = instruction[15], out = temp0);
+    Or (a = notinstruction15, b = temp0, out = writeA);
+
+
+    // Reading from (and writing to if writeA = 1) the A register
+    ARegister (in = inA, load = writeA, out = outA, out[0..14] = addressM); 
+
+
+    // Checking if the D register should be written to
+    And (a = instruction[4], b = instruction[15], out = writeD);
+
+
+    // Reading from (and writing to if writeD = 1) the D register
+    DRegister (in = ALUoutput, load = writeD, out = outD);     
+
+
+    // Choosing between A and M for input y of the ALU
+    And (a = instruction[12], b = instruction[15], out = selAorM);
+    Mux16 (a = outA, b = inM, sel = selAorM, out = y);
+    
+    
+    // Performing the necessary computation based on the instruction using the ALU 
+    ALU (x = outD, y = y, zx = instruction[11], nx = instruction[10], zy = instruction[9], ny = instruction[8], 
+    f = instruction[7], no = instruction[6], out = ALUoutput, out = outM, zr = zr, ng = ng);
+    
+
+    // Sending the value written in M to the output
+    And (a = instruction[3], b = instruction[15], out = writeM);
+
+
+    // Checking for any possible jump that has to take place
+    And (a = instruction[2], b = ng, out = temp1);           // Jump due to ng
+    And (a = instruction[1], b = zr, out = temp2);           // Jump due to zr
+    Nor (a = zr, b = ng, out = zrNorng);
+    And (a = instruction[0], b = zrNorng, out = temp3);      // Jump due to !ng
+    Or3Way (a = temp1, b = temp2, c = temp3, out = jumpifC); // Jump if the instruction is a C instruction
+    And (a = jumpifC, b = instruction[15], out = jump);      // Jump
+
+
+    // Setting the program counter for the next instruction to be executed
+    PC (in = outA, load = jump, inc = true, reset = reset, out[0..14] = pc); 
+}

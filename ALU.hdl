@@ -1,0 +1,31 @@
+CHIP ALU {
+
+    IN x[16], y[16], zx, nx, zy, ny, f, no;
+    OUT out[16], zr, ng;
+
+    PARTS:
+
+    // Applying necessary modifications to x based on the values of zx and nx
+    Mux16 (a = x, b = false, sel = zx, out = x1); 
+    Xor16 (a = x1, b = nx, out = p);
+
+    // Applying necessary modifications to y based on the values of zy and ny
+    Mux16 (a = y, b = false, sel = zy, out = y1); 
+    Xor16 (a = y1, b = ny, out = q);
+
+    // Calculating the result and storing it in tempout
+    Add16 (a = p, b = q, out = pPlusq);
+    And16  (a = p, b = q, out = pAndq);
+    Mux16 (a = pAndq, b = pPlusq, sel = f, out = r);
+    Xor16 (a = r, b = no, out = tempout);
+
+    // Checking if the result is zero
+    Or16Way (in = tempout, out = tempoutnotzr);
+    Not (in = tempoutnotzr, out = zr);
+
+    // Checking if the result is negative
+    Ng (in = tempout, out = ng);
+
+    // Sending the result to out
+    And16 (a = tempout, b = true, out = out);
+}

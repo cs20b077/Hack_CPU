@@ -1,0 +1,15 @@
+CHIP FullAdder {
+
+    IN a, b, c;  
+    OUT sum, carry;
+
+    PARTS:
+    
+    Xor (a = a, b = b, out = aXorb);
+    Xor (a = aXorb, b = c, out = sum);
+    
+    Or  (a = a, b = b, out = aOrb);
+    Or  (a = b, b = c, out = bOrc);
+    Or  (a = c, b = a, out = cOra);
+    And3Way (a = aOrb, b = bOrc, c = cOra, out = carry);
+}
